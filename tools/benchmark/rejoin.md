@@ -23,14 +23,25 @@ qualifying progress packet and excludes any earlier startup or loading time.
    builds or client settings. Record the engine, game, map, target frame, wall
    time from process launch and probe time as separate measurements.
 
+To log the exact pause frame, add this call-in to a temporary widget on the
+client that stays in the match, then check its `infolog.txt`.
+
+```lua
+function widget:GamePaused(_, paused)
+	if paused then
+		Spring.Echo("Paused frame", Spring.GetGameFrame())
+	end
+end
+```
+
 Fixed-frame timing uses `source=fixed_frame` and starts at the first
 `GameFrame` event. Use it with a paused match so the target stays fixed. Remove
 the setting to measure progress events. In a running match the reported frame
 can lag the server, and if the initial progress event is missed a paused server
 may never report another target. Compare only runs with the same source and
-target. Run the same test with an ordinary client and a headless client to help
-distinguish rendering cost. Use a Tracy capture or host/network metrics to
-attribute the time to specific work.
+target. Use the graphical client for player-facing performance numbers. Headless
+runs can check packet flow and sync, and have their own per-frame pacing. Use a
+Tracy capture or host/network metrics to attribute the time to specific work.
 
 ## Check the probe
 

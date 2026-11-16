@@ -9,15 +9,32 @@ function widget:GetInfo()
 	}
 end
 
-local startFrame, targetFrame, startTime
+local startFrame, targetFrame, startTime, source
+local fixedTargetFrame
 local finished = false
 
 function widget:Initialize()
 	finished = Spring.IsReplay()
+	fixedTargetFrame = Spring.GetConfigInt("RejoinBenchmarkTargetFrame", 0)
+end
+
+local function begin(clientFrame, serverFrame, measurementSource)
+	startFrame = clientFrame
+	targetFrame = serverFrame
+	startTime = Spring.GetTimer()
+	source = measurementSource
+	Spring.Echo(("RejoinBenchmark begin source=%s client_frame=%d server_frame=%d")
+		:format(source, startFrame, targetFrame))
+end
+
+function widget:GameFrame(clientFrame)
+	if not finished and not startTime and fixedTargetFrame > 0 then
+		begin(clientFrame, fixedTargetFrame, "fixed_frame")
+	end
 end
 
 function widget:GameProgress(serverFrame)
-	if finished then
+	if finished or fixedTargetFrame > 0 then
 		return
 	end
 	if startTime then
@@ -31,10 +48,7 @@ function widget:GameProgress(serverFrame)
 		return
 	end
 
-	startFrame = clientFrame
-	targetFrame = serverFrame
-	startTime = Spring.GetTimer()
-	Spring.Echo(("RejoinBenchmark begin client_frame=%d server_frame=%d"):format(startFrame, targetFrame))
+	begin(clientFrame, serverFrame, "progress")
 end
 
 function widget:Update()
@@ -47,7 +61,7 @@ function widget:Update()
 	end
 
 	local elapsedMs = Spring.DiffTimers(Spring.GetTimer(), startTime, true)
-	Spring.Echo(("RejoinBenchmark end client_frame=%d server_frame=%d frames_simulated=%d elapsed_ms=%.1f")
-		:format(clientFrame, targetFrame, clientFrame - startFrame, elapsedMs))
+	Spring.Echo(("RejoinBenchmark end source=%s client_frame=%d server_frame=%d frames_advanced=%d elapsed_ms=%.1f")
+		:format(source, clientFrame, targetFrame, clientFrame - startFrame, elapsedMs))
 	finished = true
 end

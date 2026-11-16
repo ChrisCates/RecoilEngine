@@ -49,3 +49,23 @@ From the checkout root, run `lua5.1 tools/benchmark/test_rejoin_probe.lua`.
 The test uses a fake clock and progress events to exercise ordinary startup,
 catch-up to a moving target, a stale progress packet, a configured fixed frame,
 and replay exclusion.
+
+## Compare battlefield rendering on and off
+
+Build the graphical engine from the experiment branch. Use the same client
+build, display settings and paused match for both runs. At the default 30
+simulation frames per second, minute 40 is frame 72,000. Use the actual pause
+frame as `RejoinBenchmarkTargetFrame` for both clients.
+
+Set `DrawWorld = 1` in the first rejoining client's isolated settings and
+`DrawWorld = 0` in the second. Leave the simulation and network settings the
+same. Use `/tset DrawWorld 1` to restore the battlefield in the running client.
+The `/tset` command applies only to the current engine session.
+
+Compare the probe's elapsed times and check that the pause frame is reached in
+both runs. In the rendering-off run, verify that the progress bar, menus and
+cursor respond normally, then restore the battlefield and check the terrain,
+units and effects. Resume play and check the logs for sync errors. Repeat with
+the same command history to separate a consistent difference from run-to-run
+variation. Capture simulation, world drawing and unsynced update times if the
+change has little effect.

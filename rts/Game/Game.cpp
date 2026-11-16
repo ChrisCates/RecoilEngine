@@ -147,6 +147,7 @@ CONFIG(bool, GameEndOnConnectionLoss).defaultValue(true);
 CONFIG(bool, ShowFPS).defaultValue(false).description("Displays current framerate.");
 CONFIG(bool, ShowClock).defaultValue(true).headlessValue(false).description("Displays a clock on the top-right corner of the screen showing the elapsed time of the current game.");
 CONFIG(bool, ShowSpeed).defaultValue(false).description("Displays current game speed.");
+CONFIG(bool, DrawWorld).defaultValue(true).description("Draw the 3D world and world effects. Can be disabled to measure rejoin catch-up with the interface still visible.");
 CONFIG(int, ShowPlayerInfo).defaultValue(1).headlessValue(0);
 CONFIG(float, GuiOpacity).defaultValue(0.8f).minimumValue(0.0f).maximumValue(1.0f).description("Sets the opacity of the built-in Spring UI. Generally has no effect on LuaUI widgets. Can be set in-game using shift+, to decrease and shift+. to increase.");
 CONFIG(std::string, InputTextGeo).defaultValue("");
@@ -1545,33 +1546,39 @@ bool CGame::Draw() {
 
 	//FIXME move both to UpdateUnsynced?
 	CTeamHighlight::Enable(spring_tomsecs(currentTimePreDraw));
+	const bool drawWorld = configHandler->GetBool("DrawWorld");
 	{
 		minimap->Update();
 
-		// note: neither this call nor DrawWorld can be made conditional on minimap->GetMaximized()
-		// minimap never covers entire screen when maximized unless map aspect-ratio matches screen
-		// (unlikely);
-		worldDrawer.GenerateIBLTextures();
+		if (drawWorld)
+			worldDrawer.GenerateIBLTextures();
 
 		// restore back to the default FBO / Viewport
 		if (FBO::IsSupported())
 			FBO::Unbind();
 		camera->LoadViewport();
 
-		worldDrawer.Draw();
+		if (drawWorld) {
+			worldDrawer.Draw();
+		} else {
+			glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
+			glDepthMask(GL_TRUE);
+			glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
+		}
 		worldDrawer.ResetMVPMatrices();
 	}
 
 	{
 		SCOPED_TIMER("Draw::Screen");
 		SCOPED_GL_DEBUGGROUP("Draw::Screen");
-		if (CUnitDrawer::UseScreenIcons())
-			unitDrawer->DrawUnitIconsScreen();
+		if (drawWorld) {
+			if (CUnitDrawer::UseScreenIcons())
+				unitDrawer->DrawUnitIconsScreen();
 
-		eventHandler.DrawScreenEffects();
-
-		hudDrawer->Draw((gu->GetMyPlayer())->fpsController.GetControllee());
-		debugDrawerAI->Draw();
+			eventHandler.DrawScreenEffects();
+			hudDrawer->Draw((gu->GetMyPlayer())->fpsController.GetControllee());
+			debugDrawerAI->Draw();
+		}
 
 		DrawInputReceivers();
 		DrawInputText();
